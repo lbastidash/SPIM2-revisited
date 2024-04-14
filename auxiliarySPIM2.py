@@ -9,13 +9,13 @@ Versión: 0.2.20240305
 #######
 #Dependencies
 #######
-import numpy as np
-from tqdm import tqdm
-import scipy.ndimage
 import cv2
+import numpy as np
+import scipy.ndimage
 from skimage import io
 #TODO Cheack slmpy Compatibility
 import slmpy
+from tqdm import tqdm
 
 
 ######
@@ -218,35 +218,33 @@ class slmpack:
             I[:, dx:] = 0
         return I
 
-    """_summary_
 
-        Raises:
-            ValueError: _description_
+######
+"""
+Image acquisition related Function
+"""
+######
+class lumiere:
+    def take_Image(core):
+        """
+        #uses pycromanager to take an image 
+
+        Parameters:
+            Core, the microscope
 
         Returns:
-            _type_: _description_
-    """
-
-######
-"""
-Microscope Functions
-"""
-######
-class microscope:
-    def singleAcquisition (self): #corre toda la adquisición de los datos!!
-
-        fileName = self.nombreImagen.text()
-        folderPath = self.folderDestino.text()
-        folderPath.replace("\\" , '/') 
-
+            A 2D numpy array containing the values from the image.
+        """
         core.snap_image()
         tagged_image = core.get_tagged_image()
-        #If using micro-manager multi-camera adapter, use core.getTaggedImage(i), where i is
-        #the camera index
-        #pixels by default come out as a 1D array. We can reshape them into an image
-        pixels = Image.fromarray( np.reshape(tagged_image.pix,newshape=[tagged_image.tags['Height'], tagged_image.tags['Width']]) , mode='I;16'  )
-        pixels.save((folderPath + '/'+fileName+'.tiff'), "TIFF") 
-
+        imageH = tagged_image.tags['Height']
+        imageW = tagged_image.tags['Width']
+        image = tagged_image.pix.reshape((imageH,imageW))
+        return image 
+    
+    def take_Tiff_image (core): 
+        #TODO Make function that takes an image and keeps it as a TIFF
+        pass
 
 
 ######
