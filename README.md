@@ -9,6 +9,8 @@ This repository contains Python code for controlling the SPIM2 Light Sheet Micro
 - **pycromanager**: Python interface for controlling microscopy hardware, including the SPIM2 Light Sheet Microscope.
 - **auxiliarySPIM2.py**: Contains auxiliary functions and classes necessary for the operation of other programs in the repository.
 - **slmpy.py**: Provides functions for controlling the spatial light modulator (SLM) component of the SPIM2 microscope.
+- **AOtools**: Adaptive optics library from M. J. Townson, O. J. D. Farley, G. O. de Xivry, J. Osborn, and A. P. Reeves, “AOtools: a Python package for adaptive optics modeling and analysis,” Opt. Express, OE, vol. 27, no. 22, pp. 31316–31329, Oct. 2019, doi: 10.1364/OE.27.031316. 
+
 
 ## Programs
 
@@ -19,6 +21,9 @@ This repository contains Python code for controlling the SPIM2 Light Sheet Micro
 2. **slmCenteringWithGraphsSPIM2.py**:
    - Description: Projects a blur phase mask in different coordinates of the SLM to find the best position to center the phase mask and graphs the results.
    - Dependencies: `pycromanager`, `slmpy.py`, `auxiliarySPIM2.py`
+     
+2. **slm Aberration Correction**:
+
 
 ## Usage
 
