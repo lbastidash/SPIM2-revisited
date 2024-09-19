@@ -1,9 +1,11 @@
 """_summary_
 SLM Sizing Functions
 Contains the Functions that run through the SLM to find the optimal size
-Version 1.20240414 Release, Winter 2024-01 
+Version 2.20240917 Release, Winter 2024-01 
 By Artemis the Lynx
 """
+
+import slmAberrationCorrection
 import logging
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -12,11 +14,18 @@ import pandas as pd
 from pycromanager import Bridge
 import slmpy
 from tqdm import tqdm
-from auxiliarySPIM2 import lumiere
+import cv2
 import os
+from PIL import Image
+import seaborn
+
+#TODO Data acquisition disabled, running on live mode only 
+
+
 
 #Logging Config
 logging.basicConfig(level=logging.INFO)
+logging.info("Initialization")
 
 def takeImage():
     """
@@ -36,11 +45,15 @@ def takeImage():
     logging.debug("image taken")
     return image  
 
-def curtain(slmShape, cutout, value=1):
+def curtain(slmShape, cutout, value=126, axes = 1):
     matrix = np.zeros(slmShape)
-    matrix[:, :cutout] = value
-    return matrix
-
+    if axes == 1:
+        matrix[:, :cutout] = value
+        return matrix
+    elif axes == 0:
+        matrix[cutout:, :] = value  # Fill from start_row onwards with ones
+        return matrix
+    
 def evaluate_binary(slmShape, coverRange, steps, core):
     """
     Acquires average and maximum pixel intensity data after applying a binary curtain phase mask
@@ -55,25 +68,41 @@ def evaluate_binary(slmShape, coverRange, steps, core):
     
     means = []
     maxes = []
+    metrics = []
     interval = np.linspace(coverRange[0], coverRange[1], steps)
     
     logging.info("Entering the simulation Loop")
     for i in tqdm(range(len(interval)), desc='Running thru the SLM', unit='Img'):
         phaseMask = curtain(slmShape, int(interval[i]))
         slm.updateArray(phaseMask.astype('uint8'))
-        #microData = takeImage()
-        microData = lumiere.take_Image(core)
-        means.append(np.mean(microData))
-        maxes.append(microData.max())
+        guideStar = slmAberrationCorrection.adaptiveOpt.get_guidestar(core, (201,201))
+        
+        #Shows the GuideStar
+        img_display = guideStar
+        img_display = cv2.normalize(img_display, None, 0, 255, cv2.NORM_MINMAX)
+        img_display = np.uint8(img_display)
+        img_display = cv2.applyColorMap(img_display, cv2.COLORMAP_BONE)
+        img_display = cv2.circle(img_display, (img_display.shape[0] // 2, img_display.shape[1] // 2), metricRads, (0, 255, 255), 2)
+        cv2.imshow('Real time guide star', img_display)
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            exit()
+        
+        means.append(np.mean(guideStar))
+        maxes.append(guideStar.max())
+        metrics.append(slmAberrationCorrection.adaptiveOpt.metric_better_r(guideStar,metricRads))
+        
+        
+
     logging.info("Simulation Loop Sucessful") 
     
-    return means, maxes, interval
+    return means, maxes, interval, metrics
 
 #Initializing    
-logging.info("Initialization")
-SLMresolution = (1920, 1034)
-coverRange = (800, 900)
-steps = 100
+SLMresolution = (1154, 1920)
+coverRange = (10, 1900)
+steps = 200
+metricRads = 75
 
 #Pycromanager Setup
 logging.info("Accessing the Microscope")
@@ -83,24 +112,26 @@ core = bridge.get_core()
 
 #Data Acquisition
 logging.info("Starting data acquisition")
-meanIntensity, maxIntensity, curtainRange = evaluate_binary(SLMresolution, coverRange, steps, core)
+cv2.namedWindow('Real time guide star', cv2.WINDOW_NORMAL)
+meanIntensity, maxIntensity, curtainRange, metrics = evaluate_binary(SLMresolution, coverRange, steps, core)
 logging.info("Data acquisition successful")
+cv2.destroyAllWindows()
 
 #closes the slm for safety
 logging.info("closing slm connection")
-slm.close()
+#slm.close()
 
-#Plot the Mean and Maximum values of the PSF    
+#Plot the Mean and metric values of the PSF    
 logging.info("Plotting Results")
 plt.figure(figsize=(10, 5))
-# Plot maximums
+# Plot metrics
 plt.subplot(1, 2, 1)
-plt.plot(curtainRange, maxIntensity, color='#240046', linewidth=2, linestyle='-')
-plt.scatter(curtainRange, maxIntensity, marker='d', color='#B40424')
-plt.title('PSF Maximum Intensities',fontsize=20)
+plt.plot(curtainRange, metrics, color='#240046', linewidth=2, linestyle='-')
+plt.scatter(curtainRange, metrics, marker='d', color='#B40424')
+plt.title('PSF Metric',fontsize=20)
 plt.grid(True, color='#E1E2EF')  # Add grid lines
 plt.xlabel('Fourier plane occlusion', fontsize=18)
-plt.ylabel('Maximum PSF intensity', fontsize=18)
+plt.ylabel('PSF Metric', fontsize=18)
 # Plot averages
 plt.subplot(1, 2, 2)
 plt.plot(curtainRange, meanIntensity, color='#240046', linewidth=2, linestyle='-')

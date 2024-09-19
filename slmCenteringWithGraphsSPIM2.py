@@ -1,28 +1,34 @@
 """_summary_
 SLM Centering Functions
 Contains the Functions that run through the SLM at different centering coordinates.
-Version 1.0 Release, Winter 2024-01 
+Version 2.20240917 Release, Winter 2024-01 
 By Artemis the Lynx
 """
 
 #Dependencies
-import numpy as np
-import matplotlib.pyplot as plt
+import aotools
+from datetime import datetime
 from auxiliarySPIM2 import slmpack
 from auxiliarySPIM2 import zernike
+import cv2
+import logging
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+import os 
+import pandas as pd
 from pycromanager import Bridge
 import slmpy
 import scipy
-import math
 from tqdm import tqdm
-import logging
-from datetime import datetime
-import os 
-import pandas as pd
-
+import UtilitySPIM2
 
 #Logging Config
 logging.basicConfig(level=logging.INFO)
+logging.info("Initialization")
+
+slm=(1154,1920)
+
  
 def evaluate_defocus_on_surface(func, x_range, y_range, x_steps, y_steps, pMask=0, mMask=0):
     """
@@ -79,15 +85,34 @@ def center_of_mass_difference(x, y, pMask, mMask):
     """
     slm.updateArray(pPlaced.astype('uint8'))
     imagePlus = takeImage()
+    percentile_99 = np.percentile(imagePlus, 99)
+    imagePlus[imagePlus < percentile_99] = 0
     cmassPlus = center_of_mass(imagePlus)
-    
+    img_displayPlus = imagePlus.astype(np.uint16)
 
     """_minusDefocus_
     """
     slm.updateArray(mPlaced.astype('uint8'))
     imageMinus = takeImage()
+    percentile_99 = np.percentile(imageMinus, 99)
+    imageMinus[imageMinus < percentile_99] = 0
     cmassMinus = center_of_mass(imageMinus)
+     
+    """_CV real time plotting
+    """
+    print(cmassMinus)
+    print(cmassPlus)
+    img_display = np.maximum(imageMinus, imagePlus)
+    img_display = cv2.normalize(img_display, None, 0, 255, cv2.NORM_MINMAX)
+    img_display = np.uint8(img_display)
+    img_display = cv2.applyColorMap(img_display, cv2.COLORMAP_BONE)
+    img_display = cv2.line(img_display, (int(cmassMinus[1]),int(cmassMinus[0])), (int(cmassPlus[1]),int(cmassPlus[0])), (0, 255, 255), 2)
+    cv2.imshow('Real time Centers of Mass', img_display)
     
+    #exit if q is pressed
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        exit()
+
     """#Center of Mass Evaluation
     """
     x1, y1 = cmassPlus
@@ -131,20 +156,26 @@ def takeImage():
     return image  
 
 
-logging.info("Initialization")
+
 # Define the parameters for the surface evaluation
 x_range = (-1920/2, 1920/2) #X resolution of the slm divided by 2
-y_range = (-1152/2, 1152/2) #Y resolution of the slm divided by 2
+y_range = (-1154/2, 1154/2) #Y resolution of the slm divided by 2
 x_steps = 10
 y_steps = 5
 
 
 #mask Setup
 logging.info("Calculating Phase Masks")
-logging.debug("Calculating positive Phase Mask")
-pMask = zernike.Defocus(signo=1)
+
+Blur = aotools.phaseFromZernikes([0,0,0,1],1000)
+Blur = cv2.normalize(
+    Blur, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+
+
+logging.debug("Calculating pawsitive Phase Mask")
+pMask = UtilitySPIM2.matriarch.frame_image(np.zeros(slm), Blur, (1154//2, 1920//2) )
 logging.debug("Calculating negative Phase Mask")
-mMask = zernike.Defocus(signo=-1)
+mMask = UtilitySPIM2.matriarch.frame_image(np.zeros(slm), (Blur*(-1)), (1154//2, 1920//2))
 
 
 #Pycromanager Setup
@@ -155,6 +186,9 @@ core = bridge.get_core()
 
 
 # Evaluate the function on the surface
+cv2.namedWindow('Real time Centers of Mass', cv2.WINDOW_NORMAL)
+
+
 logging.info("Evaluating the centers of mass")
 surface_values = evaluate_defocus_on_surface(center_of_mass_difference, x_range, y_range, x_steps, y_steps, pMask, mMask)
 ValuesXY = np.transpose(surface_values)
@@ -171,7 +205,7 @@ plt.imshow(ValuesXY, cmap='YlGn', extent=[x_range[0], x_range[1],  y_range[1], y
 plt.colorbar(label='Radious')
 plt.xlabel('X')
 plt.ylabel('Y')
-plt.title('Radious between center of masses.')
+plt.title('Radius between center of masses')
 
 
 #saves the data
