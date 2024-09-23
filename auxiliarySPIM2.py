@@ -1,8 +1,9 @@
 ########
 """
-Auxiliary Legacy Functions for SPIM2
+Auxiliary Legacy Functions for SPIM2: 
+Contains much of the functions used for the older programs 
 By Luis Bastidas, Artemis Castelblanco
-Versión: 0.2.20240305
+Versión: 2.0. 2024-09-23
 """
 #######
 

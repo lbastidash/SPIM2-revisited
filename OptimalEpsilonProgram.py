@@ -1,4 +1,9 @@
-#Optimal Epsilon
+"""_summary_
+Finds the distribution of the Metric and uses an iterative process to obtain an optimal
+value for the Epsilon constant used in Stochastic gradient descend
+By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
+version 2.0 2024-09-23
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import aotools

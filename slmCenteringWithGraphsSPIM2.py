@@ -1,8 +1,8 @@
 """_summary_
 SLM Centering Functions
 Contains the Functions that run through the SLM at different centering coordinates.
-Version 2.20240917 Release, Winter 2024-01 
-By Artemis the Lynx
+By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
+Version 3.0-2024-09-22  
 """
 
 #Dependencies
