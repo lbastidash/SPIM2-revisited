@@ -2,7 +2,7 @@
 Aberration Correction: 
 Contains functions that use Iterative process to correct for abberations
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-Version 4.0 2024-09-23
+Version 4.1 2024-09-24
 """
 import aotools
 import cv2
@@ -257,14 +257,24 @@ class adaptiveOpt:
         
         return int(center_row), int(center_col)
     
-    def sample_noise(core, samples):
-        core.set_property("Oxxius LaserBoxx LBX or LMX or LCX", 'Power set point (%)',0)
+    def sample_noise(core, samples=100):
+        """Samples the baseline Noise from the camera
+        Args:
+            core (pycromanagerCore): the pycromanager microscope's core object
+            samples (int): the number of samples used to calculate baseline noise
+        Returns:
+            Numpy Matrix: Matrix image of the average noise
+        """
+
         core.snap_image()
         tagged_image = core.get_tagged_image()
         imageH = tagged_image.tags['Height']
         imageW = tagged_image.tags['Width']
-        image = np.zeros(imageH, imageW)
+        image = np.zeros((imageH, imageW))
         
+        print("Initiating noise sampling, please make sure Laser is disabled before proceeding")
+        input("Press Enter to continue...")
+
         for i in tqdm(range(samples), desc="Sampling", unit='sample'):
             core.snap_image()
             tagged_image = core.get_tagged_image()
@@ -274,6 +284,9 @@ class adaptiveOpt:
         
         sample = image/samples
         
+        print("Noise sampling finished, please return the laser to its original configuration before proceeding")
+        input("Press Enter to continue...")
+
         return sample
     
     

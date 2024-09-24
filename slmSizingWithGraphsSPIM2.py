@@ -2,7 +2,7 @@
 SLM Sizing Functions
 Contains the Functions that run through the SLM to find the optimal size
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-Version 3.0 2024-09-23
+Version 3.1 2024-09-24
 """
 
 import slmAberrationCorrection
@@ -45,7 +45,7 @@ def takeImage():
     logging.debug("image taken")
     return image  
 
-def curtain(slmShape, cutout, value=126, axes = 1):
+def curtain(slmShape, cutout, value=128, axes = 1):
     matrix = np.zeros(slmShape)
     if axes == 1:
         matrix[:, :cutout] = value
@@ -71,11 +71,14 @@ def evaluate_binary(slmShape, coverRange, steps, core):
     metrics = []
     interval = np.linspace(coverRange[0], coverRange[1], steps)
     
+    #NoiseSample
+    noise_sample = slmAberrationCorrection.adaptiveOpt.sample_noise(core, 10)
+
     logging.info("Entering the simulation Loop")
     for i in tqdm(range(len(interval)), desc='Running thru the SLM', unit='Img'):
         phaseMask = curtain(slmShape, int(interval[i]))
         slm.updateArray(phaseMask.astype('uint8'))
-        guideStar = slmAberrationCorrection.adaptiveOpt.get_guidestar(core, (201,201))
+        guideStar = slmAberrationCorrection.adaptiveOpt.better_get_guidestar(core, noise_sample, (301,301))
         
         #Shows the GuideStar
         img_display = guideStar
@@ -86,7 +89,7 @@ def evaluate_binary(slmShape, coverRange, steps, core):
         cv2.imshow('Real time guide star', img_display)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
-            exit()
+            break
         
         means.append(np.mean(guideStar))
         maxes.append(guideStar.max())
