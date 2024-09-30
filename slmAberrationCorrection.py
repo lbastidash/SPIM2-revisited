@@ -266,9 +266,11 @@ class adaptiveOpt:
             Numpy Matrix: Matrix image of the average noise
         """
 
-        original_state = core.get_property(illumination_device, 'State')  # Store original state
+        original_state = core.get_property(illumination_device, '12-Power Setpoint [mW]')  # Store original state
         # Turn off the illumination
-        core.set_property(illumination_device, 'State', 0)  # 0 or OFF depending on your system
+        core.set_property(illumination_device, '12-Power Setpoint [mW]', 0)  # 0 or OFF depending on your system
+        
+        
 
         core.snap_image()
         tagged_image = core.get_tagged_image()
@@ -289,7 +291,9 @@ class adaptiveOpt:
         # Stop the acquisition
         core.stop_sequence_acquisition()
         # Restore the original illumination state
-        core.set_property(illumination_device, 'State', original_state)
+       
+        core.set_property(illumination_device, '12-Power Setpoint [mW]', original_state)
+
     
         sample = image/samples
         print("Noise sampling finished")
