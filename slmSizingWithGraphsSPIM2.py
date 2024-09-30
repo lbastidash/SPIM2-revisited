@@ -72,13 +72,13 @@ def evaluate_binary(slmShape, coverRange, steps, core):
     interval = np.linspace(coverRange[0], coverRange[1], steps)
     
     #NoiseSample
-    noise_sample = slmAberrationCorrection.adaptiveOpt.sample_noise(core, 10)
+    noise_sample = slmAberrationCorrection.adaptiveOpt.sample_noise(core, 100)
 
     logging.info("Entering the simulation Loop")
     for i in tqdm(range(len(interval)), desc='Running thru the SLM', unit='Img'):
         phaseMask = curtain(slmShape, int(interval[i]))
         slm.updateArray(phaseMask.astype('uint8'))
-        guideStar = slmAberrationCorrection.adaptiveOpt.better_get_guidestar(core, noise_sample, (301,301))
+        guideStar = slmAberrationCorrection.adaptiveOpt.better_get_guidestar(core, noise_sample, (201,201))
         
         #Shows the GuideStar
         img_display = guideStar
@@ -104,8 +104,8 @@ def evaluate_binary(slmShape, coverRange, steps, core):
 #Initializing    
 SLMresolution = (1154, 1920)
 coverRange = (10, 1900)
-steps = 200
-metricRads = 75
+steps = 150
+metricRads = 60
 
 #Pycromanager Setup
 logging.info("Accessing the Microscope")
