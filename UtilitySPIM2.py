@@ -1,21 +1,16 @@
-########
+
 """
 Utility Functions for SPIM2 related code 
 Code that doesn't explicitly relate to the SLM or .CORE 
 functions should go here. 
 Artemis Castelblanco
-Versión: 0.1.20240305
+Versión: 2.0 2024-09-30
 """
-#######
+
 
 import numpy as np
 import os
 
-######
-"""
-Matrix Related Functions
-"""
-######    
 class matriarch():
     
     def frame_image (frame, image, center_point):
@@ -43,30 +38,3 @@ class matriarch():
 
         return frame
 
-
-######
-"""
-File management related Functions
-"""
-######  
-class librarian: 
-    def save_data():
-        #TODO Make a function that saves the files in the standard format
-        pass
-    
-    
-    
-    
-    def save_graph(plot, filename):
-        """
-        Save a matplotlib plot as a PDF file in the parent folder of the Python file.
-        
-        Parameters:
-            plot (matplotlib.pyplot plot): The plot to save.
-            filename (str): The filename (without extension) to save the plot as.
-        """
-        parent_folder = os.path.dirname(os.path.abspath(__file__))
-        
-        
-        pass
-    

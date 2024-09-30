@@ -2,7 +2,7 @@
 Aberration Correction: 
 Contains functions that use Iterative process to correct for abberations
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-Version 4.1 2024-09-24
+Version 5.0 2024-09-30
 """
 import aotools
 import cv2
@@ -257,7 +257,7 @@ class adaptiveOpt:
         
         return int(center_row), int(center_col)
     
-    def sample_noise(core, samples=100):
+    def sample_noise(core, illumination_device, samples=100):
         """Samples the baseline Noise from the camera
         Args:
             core (pycromanagerCore): the pycromanager microscope's core object
@@ -266,29 +266,62 @@ class adaptiveOpt:
             Numpy Matrix: Matrix image of the average noise
         """
 
+        original_state = core.get_property(illumination_device, 'State')  # Store original state
+        # Turn off the illumination
+        core.set_property(illumination_device, 'State', 0)  # 0 or OFF depending on your system
+
         core.snap_image()
         tagged_image = core.get_tagged_image()
         imageH = tagged_image.tags['Height']
         imageW = tagged_image.tags['Width']
         image = np.zeros((imageH, imageW))
         
-        print("Initiating noise sampling, please make sure Laser is disabled before proceeding")
-        input("Press Enter to continue...")
-
+        print("Initiating noise sampling")
+        
+        # Start acquiring baseline noise frames with the illumination off
+        core.start_sequence_acquisition(samples, 0, False)
+        # Retrieve and process each baseline frame
         for i in tqdm(range(samples), desc="Sampling", unit='sample'):
-            core.snap_image()
-            tagged_image = core.get_tagged_image()
-            imageH = tagged_image.tags['Height']
-            imageW = tagged_image.tags['Width']
-            image = image + tagged_image.pix.reshape((imageH,imageW))
-        
+            if core.get_remaining_image_count() > 0:
+                raw_img = core.get_last_image()  # Retrieve the image
+                np_img = np.reshape(np.frombuffer(raw_img, dtype=np.uint16), newshape=(imageH, imageW))
+                image = image + np_img
+        # Stop the acquisition
+        core.stop_sequence_acquisition()
+        # Restore the original illumination state
+        core.set_property(illumination_device, 'State', original_state)
+    
         sample = image/samples
-        
-        print("Noise sampling finished, please return the laser to its original configuration before proceeding")
-        input("Press Enter to continue...")
+        print("Noise sampling finished")
 
         return sample
     
+    def tf_into_guidestar(raw_image, sensorSize, noiseSample, size=(101,101), preview=False, kernel = (5,5)):
+        """Given the raw data from the microscope and a tagged image, turns an untagged image into a guide Star Image
+        Args:
+            taggedImage (uint16): microscope raw data
+            SensorSize (tuple): camera sensor height and width
+            noiseSample (Array): an array containing the noise sample for the 
+            size (tuple, optional): size of the wanted gudiestar image. Defaults to (101,101).
+            graph (bool, optional): wheter or not to show a preview of the guidestar image. Defaults to False.
+
+        Returns:
+            Numpy Matrix: Matrix image of the guidestar
+        """
+        img = np.reshape(np.frombuffer(raw_image, dtype=np.uint16), newshape=(sensorSize[0], sensorSize[1]))
+        cleaned_Star = img-noiseSample
+        cleaned_Star[cleaned_Star < 0] = 0
+        gaussian_Filtered = cv2.GaussianBlur(cleaned_Star, kernel, 0)
+        thresh_Star = adaptiveOpt.threshold_matrix(gaussian_Filtered, 99)
+        center = scipy.ndimage.measurements.center_of_mass(thresh_Star)
+        centerOfMass=(int(center[1]),int(center[0]))
+        guideStar = adaptiveOpt.extract_centered_matrix(cleaned_Star, centerOfMass, size)
+        if preview:
+            plt.imshow(guideStar, cmap="mako") 
+            plt.colorbar
+            plt.show()
+        
+        return guideStar 
     
     def better_get_guidestar(core, noiseSample, size=(101,101), preview=False, kernel = (5,5)):
         """A better Function to obtain more accurate GuideStar Readings, requieres a noise sample

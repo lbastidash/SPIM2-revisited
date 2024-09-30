@@ -1,0 +1,33 @@
+{
+    "illumination_device": {
+      "name": "Laser1",
+      "intensity": 50
+    },
+    "slm_device": {
+        "display": 1,
+        "resolution": [1154 , 1920],
+        "refresh_period": 0.04
+        
+    },
+    "fourier_properties": {
+        "size": [1000,1000],
+        "center": [660,860],
+        "stretch": 1.01
+    },
+    "file_paths": {
+      "output_directory": "/path/to/data",
+      "log_file": "/path/to/log.txt"
+    },
+    "settings": {
+        "previews": true,
+        "metric_samples": 100,
+        "noise_samples": 100,
+        "zernike_modes": 21,
+        "iteration_epsilon": 0.1
+    },
+    "guide_star": {
+        "microbead": 0.5,
+        "binning": 1
+    }
+
+  }
