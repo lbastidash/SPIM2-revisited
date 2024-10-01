@@ -38,3 +38,26 @@ class matriarch():
 
         return frame
 
+    def stretch_image(image, stretch_factor, axis='x'):
+            """
+            Stretch an image array along a given axis by a stretch factor.
+            
+            Parameters:
+                image (numpy.ndarray): Input image array.
+                stretch_factor (float): Factor by which to stretch the image.
+                axis (str): Axis along which to stretch the image ('x' or 'y').
+            
+            Returns:
+                numpy.ndarray: Stretched image array.
+            """
+            if axis == 'x':
+                new_width = int(image.shape[1] * stretch_factor)
+                stretched_image = cv2.resize(image, (new_width, image.shape[0]))
+            elif axis == 'y':
+                new_height = int(image.shape[0] * stretch_factor)
+                stretched_image = cv2.resize(image, (image.shape[1], new_height))
+            else:
+                raise ValueError("Invalid axis. Please use 'x' or 'y'.")
+    
+            return stretched_image
+
