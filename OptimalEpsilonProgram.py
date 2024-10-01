@@ -2,7 +2,7 @@
 Finds the distribution of the Metric and uses an iterative process to obtain an optimal
 value for the Epsilon constant used in Stochastic gradient descend
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-version 3.0 2024-09-30
+version 3.1 2024-10-01
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,12 +34,13 @@ fouriershape = config["fourier_properties"]["size"]
 centerpoint = config["fourier_properties"]["center"]
 stretch = config["fourier_properties"]["stretch"]
 laser = config["illumination_device"]["name"]
+starSize, integralRad = make_now.calculate_guidestar_params(config["guide_star"]["microbead"], config["guide_star"]["binning"])
 
 #Connect to the SLM
 logging.info("Connecting to Microscope")
 bridge = Bridge()
 core = bridge.get_core()
-slm = slmpy.SLMdisplay(monitor = config["slm_device"]["resolution"])
+slm = slmpy.SLMdisplay(monitor = config["slm_device"]["display"])
 display = np.zeros(slmShape)
 slm.updateArray(display.astype('uint8'))
 
@@ -57,7 +58,7 @@ SensorSize = (tagged_image.tags['Height'],tagged_image.tags['Width'])
 
 core.set_auto_shutter(False)
 core.set_shutter_open(laser ,True)
-core.start_sequence_acquisition(distroSamples, 0, False)
+core.start_sequence_acquisition(distroSamples, 10, True)
 for i in tqdm(range(distroSamples), desc="Sampling", unit='sample'):#We start a continous acquisition mode that snaps frames quickly
     if core.get_remaining_image_count() > 0:
         img = core.get_last_image()
@@ -120,13 +121,13 @@ with tqdm(total=criteria) as pbar:
 
         #takes phase masked images
         slm.updateArray(phaseMask_p.astype('uint8'))
-        guideStar_p = adaptiveOpt.get_guidestar(core)
+        guideStar_p = adaptiveOpt.get_guidestar(core, starSize)
         slm.updateArray(phaseMask_m.astype('uint8'))
-        guideStar_m = adaptiveOpt.get_guidestar(core)
+        guideStar_m = adaptiveOpt.get_guidestar(core, starSize)
             
         #Evaluates the metric for each phase mask image
-        metric_p = adaptiveOpt.metric_better_r(guideStar_p)
-        metric_m = adaptiveOpt.metric_better_r(guideStar_m)
+        metric_p = adaptiveOpt.metric_better_r(guideStar_p, integralRad)
+        metric_m = adaptiveOpt.metric_better_r(guideStar_m, integralRad)
         diff = metric_p - metric_m
         logging.debug(f"Metric Difference ={diff}")
         

@@ -2,7 +2,7 @@
 SLM Centering Functions
 Contains the Functions that run through the SLM at different centering coordinates.
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-Version 3.0-2024-09-22  
+Version 3.1 2024-10-01  
 """
 
 #Dependencies
@@ -11,6 +11,7 @@ from datetime import datetime
 from auxiliarySPIM2 import slmpack
 from auxiliarySPIM2 import zernike
 import cv2
+import json
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,7 +28,10 @@ import UtilitySPIM2
 logging.basicConfig(level=logging.INFO)
 logging.info("Initialization")
 
-slm=(1154,1920)
+#Opens a JSON file containing all the configurations needed
+with open('config.json', 'r') as f:
+    config = json.load(f)
+slm=config["slm_device"]["resolution"]
 
  
 def evaluate_defocus_on_surface(func, x_range, y_range, x_steps, y_steps, pMask=0, mMask=0):
@@ -162,6 +166,7 @@ x_range = (-1920/2, 1920/2) #X resolution of the slm divided by 2
 y_range = (-1154/2, 1154/2) #Y resolution of the slm divided by 2
 x_steps = 10
 y_steps = 5
+laser = config["illumination_device"]["name"]
 
 
 #mask Setup
@@ -180,7 +185,7 @@ mMask = UtilitySPIM2.matriarch.frame_image(np.zeros(slm), (Blur*(-1)), (1154//2,
 
 #Pycromanager Setup
 logging.info("Accessing the Microscope")
-slm = slmpy.SLMdisplay(monitor = 1)
+slm = slmpy.SLMdisplay(monitor = config["slm_device"]["display"])
 bridge = Bridge()
 core = bridge.get_core()
 
@@ -190,9 +195,12 @@ cv2.namedWindow('Real time Centers of Mass', cv2.WINDOW_NORMAL)
 
 
 logging.info("Evaluating the centers of mass")
+core.set_auto_shutter(False)
+core.set_shutter_open(laser ,True)
 surface_values = evaluate_defocus_on_surface(center_of_mass_difference, x_range, y_range, x_steps, y_steps, pMask, mMask)
 ValuesXY = np.transpose(surface_values)
-
+core.set_auto_shutter(False)
+core.set_shutter_open(laser ,False)
 
 #Closes the slm for safety
 logging.info("closing slm connection")

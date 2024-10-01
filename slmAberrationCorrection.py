@@ -2,7 +2,7 @@
 Aberration Correction: 
 Contains functions that use Iterative process to correct for abberations
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-Version 5.0 2024-09-30
+Version 5.1 2024-10-01
 """
 import aotools
 import cv2
@@ -24,6 +24,20 @@ import seaborn
 logging.basicConfig(level=logging.DEBUG)
 
 class make_now:
+    
+    def calculate_guidestar_params(beadSize=0.5, binning = 1):
+        """_summary_
+
+        Args:
+            beadSize (float, optional): _Size of the used microbead in micrometers_. Defaults to 0.5.
+            binning (int, optional): _camera binning used_. Defaults to 1.
+
+        Returns:
+            _type_: _description_
+        """
+        guideStarSize = (((beadSize*300)+100)//binning)+1
+        radious = guideStarSize//3
+        return (guideStarSize, guideStarSize), radious
     
     def generate_corkscrew_optimized(radius,  N=7, center=(0, 0), fact=(3/4)): 
         x = np.linspace(-radius, radius, radius*2)
