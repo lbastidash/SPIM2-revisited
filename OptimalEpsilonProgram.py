@@ -56,7 +56,7 @@ tagged_image = core.get_tagged_image()
 SensorSize = (tagged_image.tags['Height'],tagged_image.tags['Width'])
 
 core.set_auto_shutter(False)
-core.set_shutter_open('Cobolt Laser',True)
+core.set_shutter_open(laser ,True)
 core.start_sequence_acquisition(distroSamples, 0, False)
 for i in tqdm(range(distroSamples), desc="Sampling", unit='sample'):#We start a continous acquisition mode that snaps frames quickly
     if core.get_remaining_image_count() > 0:
@@ -65,7 +65,7 @@ for i in tqdm(range(distroSamples), desc="Sampling", unit='sample'):#We start a 
         m_i = adaptiveOpt.metric_better_r(image_i)
         metrics.append(m_i)
 core.stop_sequence_acquisition()
-core.set_shutter_open('Cobolt Laser',False)
+core.set_shutter_open(laser ,False)
 
 """_STD Calculation    
 """
@@ -106,7 +106,7 @@ logging.info("Entering the Iteration Cycle")
 
 cv2.namedWindow('Binarized difference', cv2.WINDOW_NORMAL)
 
-core.set_shutter_open('Cobolt Laser',True)
+core.set_shutter_open(laser ,True)
 with tqdm(total=criteria) as pbar:
     while diff < criteria:
         
@@ -144,7 +144,7 @@ with tqdm(total=criteria) as pbar:
 
         pbar.update(diff - pbar.n)
 
-core.set_shutter_open('Cobolt Laser',False)
+core.set_shutter_open(laser ,False)
 
 logging.info("Iterations finished mrrowr~") 
 optimalValue = epsilon-stepSize
