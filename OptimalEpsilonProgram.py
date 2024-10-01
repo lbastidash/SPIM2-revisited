@@ -24,6 +24,7 @@ from slmAberrationCorrection import adaptiveOpt
 with open('config.json', 'r') as f:
     config = json.load(f)
 
+#loads the Configurations
 distroSamples = config["settings"]["metric_samples"]
 metricTolerance = 1.1
 degree = config["settings"]["zernike_modes"]
@@ -43,18 +44,19 @@ display = np.zeros(slmShape)
 slm.updateArray(display.astype('uint8'))
 
 print("Press Any key to confirm Acquisition")
+
 msvcrt.getch()
 logging.info("Sampling Images")
 metrics = [] 
-
 """_Distribution Sampling Loop
 """
 noiseSample = adaptiveOpt.sample_noise(core, laser, 100)
-
 core.snap_image()#We snap a random image to know the size of the sensor
 tagged_image = core.get_tagged_image()
 SensorSize = (tagged_image.tags['Height'],tagged_image.tags['Width'])
 
+core.set_auto_shutter(False)
+core.set_shutter_open('Cobolt Laser',True)
 core.start_sequence_acquisition(distroSamples, 0, False)
 for i in tqdm(range(distroSamples), desc="Sampling", unit='sample'):#We start a continous acquisition mode that snaps frames quickly
     if core.get_remaining_image_count() > 0:
@@ -63,6 +65,7 @@ for i in tqdm(range(distroSamples), desc="Sampling", unit='sample'):#We start a 
         m_i = adaptiveOpt.metric_better_r(image_i)
         metrics.append(m_i)
 core.stop_sequence_acquisition()
+core.set_shutter_open('Cobolt Laser',False)
 
 """_STD Calculation    
 """
@@ -89,21 +92,21 @@ plt.legend()
 plt.show()
 
 
-#Optimal Epsilon Iteration 
+"""_Optimal Epsilon Iteration     
+"""
 diff = 0
-
 Zernikes= aotools.zernike.zernikeArray(degree,fouriershape[0])
 N = len(Zernikes)
 array =  (int(N)*[0])
 a_t = np.array(array)
 C_t= (make_now.random_signs(len(a_t)))
 epsilon = stepSize
-
 criteria = sigma*metricTolerance
 logging.info("Entering the Iteration Cycle") 
 
 cv2.namedWindow('Binarized difference', cv2.WINDOW_NORMAL)
 
+core.set_shutter_open('Cobolt Laser',True)
 with tqdm(total=criteria) as pbar:
     while diff < criteria:
         
@@ -140,6 +143,8 @@ with tqdm(total=criteria) as pbar:
         epsilon = epsilon + stepSize
 
         pbar.update(diff - pbar.n)
+
+core.set_shutter_open('Cobolt Laser',False)
 
 logging.info("Iterations finished mrrowr~") 
 optimalValue = epsilon-stepSize
