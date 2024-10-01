@@ -104,8 +104,6 @@ def center_of_mass_difference(x, y, pMask, mMask):
      
     """_CV real time plotting
     """
-    print(cmassMinus)
-    print(cmassPlus)
     img_display = np.maximum(imageMinus, imagePlus)
     img_display = cv2.normalize(img_display, None, 0, 255, cv2.NORM_MINMAX)
     img_display = np.uint8(img_display)

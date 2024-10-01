@@ -17,7 +17,7 @@ from pycromanager import Bridge, Acquisition
 import logging
 import msvcrt
 from tqdm import tqdm
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 from slmAberrationCorrection import adaptiveOpt
 
 #Opens a JSON file containing all the configurations needed
@@ -58,15 +58,15 @@ SensorSize = (tagged_image.tags['Height'],tagged_image.tags['Width'])
 
 core.set_auto_shutter(False)
 core.set_shutter_open(laser ,True)
-core.start_sequence_acquisition(distroSamples, 10, True)
-for i in tqdm(range(distroSamples), desc="Sampling", unit='sample'):#We start a continous acquisition mode that snaps frames quickly
-    if core.get_remaining_image_count() > 0:
-        img = core.get_last_image()
-        image_i = adaptiveOpt.tf_into_guidestar(img, SensorSize, noiseSample, size=(201,201),  graph=False)
-        m_i = adaptiveOpt.metric_better_r(image_i)
-        metrics.append(m_i)
-core.stop_sequence_acquisition()
+for i in tqdm(range(distroSamples), desc="Sampling", unit='sample'):
+    core.snap_image()
+    img = core.get_image()  
+    image_i = adaptiveOpt.tf_into_guidestar(img, SensorSize, noiseSample, size=starSize)
+    m_i = adaptiveOpt.metric_better_r(image_i)
+    metrics.append(m_i)
+
 core.set_shutter_open(laser ,False)
+
 
 """_STD Calculation    
 """
@@ -131,11 +131,15 @@ with tqdm(total=criteria) as pbar:
         diff = metric_p - metric_m
         logging.debug(f"Metric Difference ={diff}")
         
+
+        print(guideStar_m.shape)
+        print(guideStar_p.shape)
+
         #plots the difference for comfort
         _, binary_pimage = cv2.threshold(guideStar_p, np.percentile(guideStar_p,99), 1, cv2.THRESH_BINARY)
         _, binary_mimage = cv2.threshold(guideStar_m, np.percentile(guideStar_m,99), 1, cv2.THRESH_BINARY)
         xorImage = (binary_mimage+binary_pimage)%2
-        xorImage = cv2.applyColorMap(xorImage, cv2.COLORMAP_BONE)
+        #xorImage = cv2.applyColorMap(xorImage, cv2.COLORMAP_BONE)
         cv2.putText(xorImage, f"Epsilon = {epsilon}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
         cv2.imshow('Binarized difference', xorImage)
         if cv2.waitKey(1) & 0xFF == ord("q"):

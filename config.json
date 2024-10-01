@@ -1,6 +1,6 @@
 {
     "illumination_device": {
-      "name": "Laser1",
+      "name": "Cobolt Laser",
       "intensity": 50
     },
     "slm_device": {

@@ -77,7 +77,7 @@ def evaluate_binary(slmShape, coverRange, steps, core, laser):
     interval = np.linspace(coverRange[0], coverRange[1], steps)
     
     #NoiseSample
-    noise_sample = slmAberrationCorrection.adaptiveOpt.sample_noise(core, 100)
+    noise_sample = slmAberrationCorrection.adaptiveOpt.sample_noise(core, laser)
 
     logging.info("Entering the simulation Loop")
     core.set_auto_shutter(False)
@@ -101,7 +101,7 @@ def evaluate_binary(slmShape, coverRange, steps, core, laser):
         means.append(np.mean(guideStar))
         maxes.append(guideStar.max())
         metrics.append(slmAberrationCorrection.adaptiveOpt.metric_better_r(guideStar,metricRads))
-        
+    core.set_shutter_open(laser ,False)
         
 
     logging.info("Simulation Loop Sucessful") 
@@ -114,6 +114,7 @@ coverRange = (10, 1900)
 steps = 150
 starSize, metricRads = make_now.calculate_guidestar_params(config["guide_star"]["microbead"], config["guide_star"]["binning"])
 laser = config["illumination_device"]["name"]
+
 
 #Pycromanager Setup
 logging.info("Accessing the Microscope")

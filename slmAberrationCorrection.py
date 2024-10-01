@@ -35,8 +35,9 @@ class make_now:
         Returns:
             _type_: _description_
         """
-        guideStarSize = (((beadSize*300)+100)//binning)+1
-        radious = guideStarSize//3
+        guideStarSize = int((((beadSize*300)+100)//binning)+1)
+        radious = int(guideStarSize//3)
+
         return (guideStarSize, guideStarSize), radious
     
     def generate_corkscrew_optimized(radius,  N=7, center=(0, 0), fact=(3/4)): 
@@ -225,6 +226,7 @@ class adaptiveOpt:
         end_col = min(matrix.shape[1], center_col + (cols - cols // 2))
             
         # Extract the smaller matrix
+        
         smaller_matrix = matrix[start_row:end_row, start_col:end_col]
             
         return smaller_matrix
@@ -279,12 +281,8 @@ class adaptiveOpt:
         Returns:
             Numpy Matrix: Matrix image of the average noise
         """
-
-        original_state = core.get_property(illumination_device, '12-Power Setpoint [mW]')  # Store original state
-        # Turn off the illumination
-        core.set_property(illumination_device, '12-Power Setpoint [mW]', 0)  # 0 or OFF depending on your system
-        
-        
+        core.set_auto_shutter(False)
+        core.set_shutter_open(illumination_device , False)
 
         core.snap_image()
         tagged_image = core.get_tagged_image()
@@ -295,19 +293,14 @@ class adaptiveOpt:
         print("Initiating noise sampling")
         
         # Start acquiring baseline noise frames with the illumination off
-        core.start_sequence_acquisition(samples, 0, False)
-        # Retrieve and process each baseline frame
         for i in tqdm(range(samples), desc="Sampling", unit='sample'):
-            if core.get_remaining_image_count() > 0:
-                raw_img = core.get_last_image()  # Retrieve the image
-                np_img = np.reshape(np.frombuffer(raw_img, dtype=np.uint16), newshape=(imageH, imageW))
-                image = image + np_img
-        # Stop the acquisition
-        core.stop_sequence_acquisition()
+            core.snap_image()
+            raw_img = core.get_image()
+            np_img = np.reshape(np.frombuffer(raw_img, dtype=np.uint16), newshape=(imageH, imageW))
+            image = image + np_img
         # Restore the original illumination state
-       
-        core.set_property(illumination_device, '12-Power Setpoint [mW]', original_state)
-
+        core.set_shutter_open(illumination_device ,False)
+        core.set_auto_shutter(True)
     
         sample = image/samples
         print("Noise sampling finished")

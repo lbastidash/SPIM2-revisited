@@ -10,6 +10,7 @@ Versión: 2.0 2024-09-30
 
 import numpy as np
 import os
+import cv2
 
 class matriarch():
     
@@ -60,4 +61,3 @@ class matriarch():
                 raise ValueError("Invalid axis. Please use 'x' or 'y'.")
     
             return stretched_image
-
