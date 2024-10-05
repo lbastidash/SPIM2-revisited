@@ -515,3 +515,124 @@ def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, 
     
     #slm.close()
     return phaseMask_t, iterations, metrics
+
+def better_iterate(slmShape, fouriershape, centerpoint, stretch, degree, totalIterations, slm, g_0=0.1, alpha_0=0.05, epsilon=0.4, integR = 60, guidS =(201,201), preview=True):
+    """_summary_
+
+    Args:
+        slmShape (tuple): Resolution of the SLM (Y,X)
+        fouriershape (tuple): Resolution of the phase mask
+        centerpoint (tuple): position of the phase Mask in the SLM
+        stretch (float): stretch factor of the phaseMask
+        degree (int): number of polinomials in the series
+        totalIterations (int): number of iterations
+        slm (sml object): micromanager SLM object 
+        g_0 (float): initial value for the learning rate
+        epsilon (float): perturbation value
+        alpha (float): momentum scale value
+        integR (int): radius of integration
+        guidS (tuple): size of the guide Star
+        preview (bool, optional): whether or not to preview the results. Defaults to True.
+
+    Returns:
+        ndArray, list, list: Vector containing the Optimized Zernike Coefficients  
+    """
+    Zernikes= aotools.zernike.zernikeArray(degree,fouriershape[0])
+    N = len(Zernikes)
+    array =  (int(N)*[0])
+
+    logging.info("Accessing Microscope")
+    #slm = slmpy.SLMdisplay(monitor = 1)
+    bridge = Bridge()
+    core = bridge.get_core()
+
+    #Iteration Generator
+    logging.info("Preadquisition")
+
+    #Confirm Microsphere alignement
+
+    slm.updateArray(np.zeros(slmShape))
+    print("Press Any key to confirm Depth")
+    msvcrt.getch()
+    print("Depth Confirmed")
+
+    #initializes the optimization variables
+    startimage = adaptiveOpt.get_guidestar(core, guidS,graph=preview)
+    M0 = adaptiveOpt.metric_better_r(startimage, integR)
+    metric_t = M0
+    a_dash_t = np.array(array)  
+    v_t = 0
+    v_t_minus = 0
+    
+    #saves some data
+    metrics = []
+    polynomialSeries = []
+
+    #main Iteration Cycle
+    logging.info("10 seconds for iteration")
+    time.sleep(10)
+    logging.info("Iteration Begins")
+    iteration = 1 
+    iterations = []
+
+    for i in tqdm(range(totalIterations), desc="Optimizing", unit='iteration'): 
+    
+        logging.debug(f"Coefficients ={a_dash_t}")
+
+        #Creates the iteration's Phase mask
+        phaseMask_t = make_now.zernike_optimized(Zernikes, a_dash_t,stretch, slmShape, centerpoint)# This is  the input of our function for the current iteration
+        slm.updateArray(phaseMask_t.astype('uint8'))
+        guideStar_t = adaptiveOpt.get_guidestar(core, guidS)
+        metric_t = adaptiveOpt.metric_better_r(guideStar_t, integR)# this is the value of our function for the current iteration
+        logging.debug(f"Metric ={metric_t}")
+        metrics.append(metric_t)# We want to save this value to see the gradient descend is working
+
+        #Disturbs the polynomial series Terms
+        Sign_t= (make_now.random_signs(len(a_dash_t)))#Gets a random direction (chooses the signs of all our variables randomly)
+        Epsil_t = epsilon*Sign_t#The Epsilon vector that represents a small perturbation (see. derivative definition)
+        a_plus = a_dash_t + Epsil_t#Calculates a small shift forward in the random direction AKA +Ɛ
+        a_minus = a_dash_t - Epsil_t#Calculates a small shift backwards in the random direction AKA -Ɛ
+
+        #Creates phase masks 
+        phaseMask_p = make_now.zernike_optimized(Zernikes, a_plus, stretch, slmShape, centerpoint)# θ + Ɛ
+        phaseMask_m = make_now.zernike_optimized(Zernikes, a_minus, stretch, slmShape, centerpoint)# θ - Ɛ
+
+        #takes phase masked images
+        slm.updateArray(phaseMask_p.astype('uint8'))
+        guideStar_p = adaptiveOpt.get_guidestar(core, guidS)
+        slm.updateArray(phaseMask_m.astype('uint8'))
+        guideStar_m = adaptiveOpt.get_guidestar(core, guidS)
+        
+        #Evaluates the metric for each phase mask image
+        metric_p = adaptiveOpt.metric_better_r(guideStar_p, integR)# our function F(θ + Ɛ)= this variable
+        metric_m = adaptiveOpt.metric_better_r(guideStar_m, integR)# our function F(θ - Ɛ)= this variable
+        delta_Metric = metric_p - metric_m# our noisy gradient
+        logging.debug(f"Metric Difference ={delta_Metric}")
+        
+        #calculates the terms for the next iteration
+        g_t = g_0*metric_t/M0 #Adaptive Gain value
+        logging.debug(f"gain ={g_t}")
+        v_t = g_t*(delta_Metric*(2*Epsil_t)/((2*epsilon)**2))
+        a_dash_t  = a_dash_t - v_t + alpha_0*v_t_minus
+        v_t_minus = v_t
+        #saves important data
+        polynomialSeries.append(a_dash_t)
+        iterations.append(iteration)    
+        logging.debug(f"Iteration {i}")
+
+        iteration +=1    
+        
+    logging.info("Iterations Finished :3")
+
+    if preview: 
+        logging.info("Plotting Results")
+        
+        guideStar = adaptiveOpt.get_guidestar(core, guidS)
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        ax1.imshow(guideStar, cmap='mako')
+        ax2.scatter(iterations, metrics, marker='d', color='#B40424')
+        ax2.set_title('Metric progression',fontsize=20)
+        plt.show()
+    
+    #slm.close()
+    return phaseMask_t, iterations, metrics
