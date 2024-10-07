@@ -19,13 +19,13 @@
       "log_file": "/path/to/log.txt"
     },
     "settings": {
-        "previews": true,
-        "metric_samples": 100,
-        "noise_samples": 100,
-        "zernike_modes": 21,
-        "iteration_epsilon": 0.2,
-        "iteration_alpha": 0.2,
-        "iteration_gain0": 0.1
+      "previews": true,
+      "metric_samples": 100,
+      "noise_samples": 100,
+      "zernike_modes": 21,
+      "iteration_epsilon": 0.4,
+      "iteration_alpha": 0.01,
+      "iteration_gain0": 0.1
     },
     "guide_star": {
         "microbead": 0.5,

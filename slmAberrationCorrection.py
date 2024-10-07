@@ -2,7 +2,7 @@
 Aberration Correction: 
 Contains functions that use Iterative process to correct for abberations
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-Version 5.1 2024-10-01
+Version 5.2 2024-10-07
 """
 import aotools
 import cv2
@@ -20,8 +20,12 @@ from pycromanager import Bridge
 from tqdm import tqdm
 import msvcrt
 import seaborn
+import json
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+#Opens a JSON file containing all the configurations needed
+with open('config.json', 'r') as f:
+    config = json.load(f)
 
 class make_now:
     
@@ -33,7 +37,8 @@ class make_now:
             binning (int, optional): _camera binning used_. Defaults to 1.
 
         Returns:
-            _type_: _description_
+            _Tuple_: _size of the guide Star_
+            _int_: _Integration radius_
         """
         guideStarSize = int((((beadSize*300)+100)//binning)+1)
         radious = int(guideStarSize//3)
@@ -49,7 +54,7 @@ class make_now:
         
         answer = ((2*np.ceil((N)*((R/radius)**(1/fact)))-1)*Phi)%(2*np.pi) 
         
-        return (answer)*aotools.circle(radius,2*radius)*(255/(2*np.pi))
+        return (answer)*aotools.circle(radius,2*radius)*(256/(2*np.pi))
 
 
     def random_signs(length):
@@ -64,7 +69,7 @@ class make_now:
             array[i] = random.choice([-1, 1])  # Set each element to either -1 or 1 randomly
         return array
     
-    def zernike_optimized (Z_v, V_coef, strt, S_sz, C_cntr, norma=True, preview = False, maxAdmisible = 255, safeguard = 'fresnel'):
+    def zernike_optimized (Z_v, V_coef, strt, S_sz, C_cntr, norma=True, preview = False, maxAdmisible = 256, safeguard = 'fresnel'):
         """Optimized Zernike Polinomial phase mask makes
 
         Args:
@@ -75,7 +80,7 @@ class make_now:
             C_cntr (tuple): center of the SLM
             norma (bool, optional): Wheter to normalize the phase mask or not. Defaults to True.
             preview (bool, optional): wheter to preview the phase mask or not. Defaults to False.
-            maxAdmisible (int, optional): maximum value that the SLM can display. Defaults to 255.
+            maxAdmisible (int, optional): maximum value that the SLM can display. Defaults to 256.
             safeguard (str, optional): type of safeguard for if the value is surpassed. Defaults to 'truncating'.
 
         Returns:
@@ -123,7 +128,7 @@ class make_now:
         
         return Z_result
     
-    def zernike_phase_mask (V_coef, dmtr, strt, S_sz, C_cntr, norma=True, preview = True, maxAdmisible = 255, safeguard = 'fresnel'):
+    def zernike_phase_mask (V_coef, dmtr, strt, S_sz, C_cntr, norma=True, preview = True, maxAdmisible = 256, safeguard = 'fresnel'):
         Z_i = aotools.functions.zernike.phaseFromZernikes(V_coef, dmtr)
         Z_strt = matriarch.stretch_image(Z_i, strt)
         C_cnvas = np.zeros(S_sz)
@@ -138,7 +143,7 @@ class make_now:
                 logging.warning(f"Rezising the Matrix")
                 Z_result = Z_result*(maxAdmisible/Z_result.max())
             elif safeguard == 'fresnel': 
-                Z_result = Z_result%255
+                Z_result = Z_result%256
                 logging.warning(f"Fresnel Lens yet to be implemented, Matrix left as it is")
             else: 
                 logging.warning(f"Truncating the Matrix to {maxAdmisible}")
@@ -277,6 +282,7 @@ class adaptiveOpt:
         """Samples the baseline Noise from the camera
         Args:
             core (pycromanagerCore): the pycromanager microscope's core object
+            illumination_device (str): name of the shutter
             samples (int): the number of samples used to calculate baseline noise
         Returns:
             Numpy Matrix: Matrix image of the average noise
@@ -401,7 +407,8 @@ class adaptiveOpt:
         
         return guideStar 
 
-def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, totalIterations, slm, preview=True, integR = 60, guidS =(201,201)):
+def iterate(slmShape, fouriershape, 
+            centerpoint, stretch, degree, g_0, epsilon, totalIterations, slm, illumination_device, noiseSample, preview=False, integR = 60, guidS =(201,201)):
     """_summary_
 
     Args:
@@ -414,6 +421,8 @@ def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, 
         epsilon (float): perturnation value
         totalIterations (int): number of iterations
         slm (sml object): slm function 
+        illumination_device (string)): name of the laser 
+        noiseSample (array): Sample of the noise
         preview (bool, optional): wheter or not to preview the results. Defaults to True.
 
     Returns:
@@ -430,16 +439,16 @@ def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, 
 
     #Iteration Generator
     logging.info("Preadquisition")
-
+    
     #Confirm Microsphere alignement
 
     slm.updateArray(np.zeros(slmShape))
-    print("Press Any key to confirm Depth")
+    print("Press Any key to confirm position")
     msvcrt.getch()
     print("Depth Confirmed")
 
     #initializes the optimization variables
-    startimage = adaptiveOpt.get_guidestar(core, guidS,graph=preview)
+    startimage = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
     M0 = adaptiveOpt.metric_better_r(startimage, integR)
     metric_t = M0
     a_dash_t = np.array(array)  
@@ -450,10 +459,13 @@ def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, 
 
     #main Iteration Cycle
     logging.info("10 seconds for iteration")
-    time.sleep(10)
+    time.sleep(1)
     logging.info("Iteration Begins")
     iteration = 1 
     iterations = []
+
+    core.set_auto_shutter(False)
+    core.set_shutter_open(illumination_device , True)
 
     for i in tqdm(range(totalIterations), desc="Optimizing", unit='iteration'): 
     
@@ -471,9 +483,9 @@ def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, 
 
         #takes phase masked images
         slm.updateArray(phaseMask_p.astype('uint8'))
-        guideStar_p = adaptiveOpt.get_guidestar(core, guidS)
+        guideStar_p = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
         slm.updateArray(phaseMask_m.astype('uint8'))
-        guideStar_m = adaptiveOpt.get_guidestar(core, guidS)
+        guideStar_m = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
         
         #Evaluates the metric for each phase mask image
         metric_p = adaptiveOpt.metric_better_r(guideStar_p, integR)
@@ -484,7 +496,7 @@ def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, 
         #Creates the iteration's Phase mask
         phaseMask_t = make_now.zernike_optimized(Zernikes, a_dash_t,stretch, slmShape, centerpoint)
         slm.updateArray(phaseMask_t.astype('uint8'))
-        guideStar_t = adaptiveOpt.get_guidestar(core, guidS)
+        guideStar_t = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
         metric_t = adaptiveOpt.metric_better_r(guideStar_t, integR)
         logging.debug(f"Metric ={diff}")
         
@@ -516,26 +528,30 @@ def iterate(slmShape, fouriershape, centerpoint, stretch, degree, g_0, epsilon, 
     #slm.close()
     return phaseMask_t, iterations, metrics
 
-def better_iterate(slmShape, fouriershape, centerpoint, stretch, degree, totalIterations, slm, g_0=0.1, alpha_0=0.05, epsilon=0.4, integR = 60, guidS =(201,201), preview=True):
+def better_iterate(noiseSample, totalIterations, slm, slmShape = config["slm_device"]["resolution"], fouriershape = config["fourier_properties"]["size"], 
+            centerpoint = config["fourier_properties"]["center"], stretch = config["fourier_properties"]["stretch"], 
+            degree = config["settings"]["zernike_modes"], g_0 = config["settings"]["iteration_gain0"], 
+            epsilon = config["settings"]["iteration_epsilon"], alpha_0=config["settings"]["iteration_alpha"], 
+            illumination_device = config["illumination_device"]["name"], preview=False, integR = 60, guidS =(201,201)):
     """_summary_
 
     Args:
+        noiseSample (array): Sample of the noise
+        totalIterations (int): number of iterations
+        slm (sml object): slm function 
         slmShape (tuple): Resolution of the SLM (Y,X)
         fouriershape (tuple): Resolution of the phase mask
         centerpoint (tuple): position of the phase Mask in the SLM
         stretch (float): stretch factor of the phaseMask
         degree (int): number of polinomials in the series
-        totalIterations (int): number of iterations
-        slm (sml object): micromanager SLM object 
         g_0 (float): initial value for the learning rate
-        epsilon (float): perturbation value
-        alpha (float): momentum scale value
-        integR (int): radius of integration
-        guidS (tuple): size of the guide Star
-        preview (bool, optional): whether or not to preview the results. Defaults to True.
+        epsilon (float): perturnation value
+        illumination_device (string)): name of the laser 
+        
+        preview (bool, optional): wheter or not to preview the results. Defaults to True.
 
     Returns:
-        ndArray, list, list: Vector containing the Optimized Zernike Coefficients  
+        ndArray, list, list: _description_
     """
     Zernikes= aotools.zernike.zernikeArray(degree,fouriershape[0])
     N = len(Zernikes)
@@ -548,22 +564,21 @@ def better_iterate(slmShape, fouriershape, centerpoint, stretch, degree, totalIt
 
     #Iteration Generator
     logging.info("Preadquisition")
-
+    
     #Confirm Microsphere alignement
 
     slm.updateArray(np.zeros(slmShape))
-    print("Press Any key to confirm Depth")
+    print("Press Any key to confirm position")
     msvcrt.getch()
     print("Depth Confirmed")
 
     #initializes the optimization variables
-    startimage = adaptiveOpt.get_guidestar(core, guidS,graph=preview)
+    startimage = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
     M0 = adaptiveOpt.metric_better_r(startimage, integR)
     metric_t = M0
     a_dash_t = np.array(array)  
-    v_t = 0
     v_t_minus = 0
-    
+
     #saves some data
     metrics = []
     polynomialSeries = []
@@ -575,6 +590,9 @@ def better_iterate(slmShape, fouriershape, centerpoint, stretch, degree, totalIt
     iteration = 1 
     iterations = []
 
+    core.set_auto_shutter(False)
+    core.set_shutter_open(illumination_device , True)
+
     for i in tqdm(range(totalIterations), desc="Optimizing", unit='iteration'): 
     
         logging.debug(f"Coefficients ={a_dash_t}")
@@ -582,7 +600,7 @@ def better_iterate(slmShape, fouriershape, centerpoint, stretch, degree, totalIt
         #Creates the iteration's Phase mask
         phaseMask_t = make_now.zernike_optimized(Zernikes, a_dash_t,stretch, slmShape, centerpoint)# This is  the input of our function for the current iteration
         slm.updateArray(phaseMask_t.astype('uint8'))
-        guideStar_t = adaptiveOpt.get_guidestar(core, guidS)
+        guideStar_t = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
         metric_t = adaptiveOpt.metric_better_r(guideStar_t, integR)# this is the value of our function for the current iteration
         logging.debug(f"Metric ={metric_t}")
         metrics.append(metric_t)# We want to save this value to see the gradient descend is working
@@ -599,9 +617,9 @@ def better_iterate(slmShape, fouriershape, centerpoint, stretch, degree, totalIt
 
         #takes phase masked images
         slm.updateArray(phaseMask_p.astype('uint8'))
-        guideStar_p = adaptiveOpt.get_guidestar(core, guidS)
+        guideStar_p = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
         slm.updateArray(phaseMask_m.astype('uint8'))
-        guideStar_m = adaptiveOpt.get_guidestar(core, guidS)
+        guideStar_m = adaptiveOpt.better_get_guidestar(core, noiseSample, guidS)
         
         #Evaluates the metric for each phase mask image
         metric_p = adaptiveOpt.metric_better_r(guideStar_p, integR)# our function F(θ + Ɛ)= this variable

@@ -10,6 +10,7 @@ import logging
 from datetime import datetime
 import json
 import matplotlib.pyplot as plt
+import msvcrt
 import numpy as np
 import pandas as pd
 from pycromanager import Bridge
@@ -111,7 +112,8 @@ def evaluate_binary(slmShape, coverRange, steps, core, laser):
 #Initializing    
 SLMresolution = config["slm_device"]["resolution"]
 coverRange = (10, 1900)
-steps = 150
+steps = 100
+repetitions = 5
 starSize, metricRads = make_now.calculate_guidestar_params(config["guide_star"]["microbead"], config["guide_star"]["binning"])
 laser = config["illumination_device"]["name"]
 
@@ -126,6 +128,16 @@ core = bridge.get_core()
 logging.info("Starting data acquisition")
 cv2.namedWindow('Real time guide star', cv2.WINDOW_NORMAL)
 meanIntensity, maxIntensity, curtainRange, metrics = evaluate_binary(SLMresolution, coverRange, steps, core, laser)
+Inertia = np.asarray(metrics)
+for i in range(repetitions):
+    print("Press Any key to continue Acquisition")
+    msvcrt.getch()
+    _, _, _, _, repetitionMetric = evaluate_binary(SLMresolution, coverRange, steps, core, laser)
+    repetitionInertia = np.asarray(repetitionMetric)
+    Inertia = Inertia + repetitionInertia
+
+Inertia= Inertia/(repetitions+1)
+
 logging.info("Data acquisition successful")
 cv2.destroyAllWindows()
 
@@ -138,8 +150,8 @@ logging.info("Plotting Results")
 plt.figure(figsize=(10, 5))
 # Plot metrics
 plt.subplot(1, 2, 1)
-plt.plot(curtainRange, metrics, color='#240046', linewidth=2, linestyle='-')
-plt.scatter(curtainRange, metrics, marker='d', color='#B40424')
+plt.plot(curtainRange, Inertia, color='#240046', linewidth=2, linestyle='-')
+plt.scatter(curtainRange, Inertia, marker='d', color='#B40424')
 plt.title('PSF Metric',fontsize=20)
 plt.grid(True, color='#E1E2EF')  # Add grid lines
 plt.xlabel('Fourier plane occlusion', fontsize=18)
