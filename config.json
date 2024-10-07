@@ -23,7 +23,7 @@
         "metric_samples": 100,
         "noise_samples": 100,
         "zernike_modes": 21,
-        "iteration_epsilon": 0.1
+        "iteration_epsilon": 0.2
     },
     "guide_star": {
         "microbead": 0.5,
