@@ -2,30 +2,35 @@
 SLM Sizing Functions
 Contains the Functions that run through the SLM to find the optimal size
 By Artemis the Lynx, correspondence c.castelblancov@uniandes.edu.co 
-Version 3.1 2024-09-24
+Version 3.2 2024-10-01
 """
 
 import slmAberrationCorrection
 import logging
 from datetime import datetime
+import json
 import matplotlib.pyplot as plt
+import msvcrt
 import numpy as np
 import pandas as pd
 from pycromanager import Bridge
 import slmpy
+from slmAberrationCorrection import make_now
 from tqdm import tqdm
 import cv2
 import os
 from PIL import Image
 import seaborn
 
-#TODO Data acquisition disabled, running on live mode only 
-
-
+#TODO Data acquisition disabled, running on live mode only
 
 #Logging Config
 logging.basicConfig(level=logging.INFO)
 logging.info("Initialization")
+
+#Opens a JSON file containing all the configurations needed
+with open('config.json', 'r') as f:
+    config = json.load(f)
 
 def takeImage():
     """
@@ -54,14 +59,15 @@ def curtain(slmShape, cutout, value=128, axes = 1):
         matrix[cutout:, :] = value  # Fill from start_row onwards with ones
         return matrix
     
-def evaluate_binary(slmShape, coverRange, steps, core):
+def evaluate_binary(slmShape, coverRange, steps, core, laser):
     """
     Acquires average and maximum pixel intensity data after applying a binary curtain phase mask
     Parameters:
-        slmShape: Tuple (x_min, x_max) resolution of the SLM 
+        slmShape: Tuple (x, y) resolution of the SLM 
         coverRange: Tuple (y_min, y_max) range the curtain mask will extend
-        steps: Number of steps
+        steps: int Number of steps
         core: pycromanager microscope core
+        laser: 
     Returns:
         means, maxes, interval : lists with the mean and maximum pixel intensity and the curtain interval
     """
@@ -72,13 +78,15 @@ def evaluate_binary(slmShape, coverRange, steps, core):
     interval = np.linspace(coverRange[0], coverRange[1], steps)
     
     #NoiseSample
-    noise_sample = slmAberrationCorrection.adaptiveOpt.sample_noise(core, 100)
+    noise_sample = slmAberrationCorrection.adaptiveOpt.sample_noise(core, laser)
 
     logging.info("Entering the simulation Loop")
+    core.set_auto_shutter(False)
+    core.set_shutter_open(laser ,True)
     for i in tqdm(range(len(interval)), desc='Running thru the SLM', unit='Img'):
         phaseMask = curtain(slmShape, int(interval[i]))
         slm.updateArray(phaseMask.astype('uint8'))
-        guideStar = slmAberrationCorrection.adaptiveOpt.better_get_guidestar(core, noise_sample, (201,201))
+        guideStar = slmAberrationCorrection.adaptiveOpt.better_get_guidestar(core, noise_sample, starSize)
         
         #Shows the GuideStar
         img_display = guideStar
@@ -94,7 +102,7 @@ def evaluate_binary(slmShape, coverRange, steps, core):
         means.append(np.mean(guideStar))
         maxes.append(guideStar.max())
         metrics.append(slmAberrationCorrection.adaptiveOpt.metric_better_r(guideStar,metricRads))
-        
+    core.set_shutter_open(laser ,False)
         
 
     logging.info("Simulation Loop Sucessful") 
@@ -102,21 +110,34 @@ def evaluate_binary(slmShape, coverRange, steps, core):
     return means, maxes, interval, metrics
 
 #Initializing    
-SLMresolution = (1154, 1920)
+SLMresolution = config["slm_device"]["resolution"]
 coverRange = (10, 1900)
-steps = 150
-metricRads = 60
+steps = 100
+repetitions = 5
+starSize, metricRads = make_now.calculate_guidestar_params(config["guide_star"]["microbead"], config["guide_star"]["binning"])
+laser = config["illumination_device"]["name"]
+
 
 #Pycromanager Setup
 logging.info("Accessing the Microscope")
-slm = slmpy.SLMdisplay(monitor = 1)
+slm = slmpy.SLMdisplay(monitor = config["slm_device"]["display"])
 bridge = Bridge()
 core = bridge.get_core()
 
 #Data Acquisition
 logging.info("Starting data acquisition")
 cv2.namedWindow('Real time guide star', cv2.WINDOW_NORMAL)
-meanIntensity, maxIntensity, curtainRange, metrics = evaluate_binary(SLMresolution, coverRange, steps, core)
+meanIntensity, maxIntensity, curtainRange, metrics = evaluate_binary(SLMresolution, coverRange, steps, core, laser)
+Inertia = np.asarray(metrics)
+for i in range(repetitions):
+    print("Press Any key to continue Acquisition")
+    msvcrt.getch()
+    _, _, _, _, repetitionMetric = evaluate_binary(SLMresolution, coverRange, steps, core, laser)
+    repetitionInertia = np.asarray(repetitionMetric)
+    Inertia = Inertia + repetitionInertia
+
+Inertia= Inertia/(repetitions+1)
+
 logging.info("Data acquisition successful")
 cv2.destroyAllWindows()
 
@@ -129,8 +150,8 @@ logging.info("Plotting Results")
 plt.figure(figsize=(10, 5))
 # Plot metrics
 plt.subplot(1, 2, 1)
-plt.plot(curtainRange, metrics, color='#240046', linewidth=2, linestyle='-')
-plt.scatter(curtainRange, metrics, marker='d', color='#B40424')
+plt.plot(curtainRange, Inertia, color='#240046', linewidth=2, linestyle='-')
+plt.scatter(curtainRange, Inertia, marker='d', color='#B40424')
 plt.title('PSF Metric',fontsize=20)
 plt.grid(True, color='#E1E2EF')  # Add grid lines
 plt.xlabel('Fourier plane occlusion', fontsize=18)

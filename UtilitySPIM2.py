@@ -1,21 +1,17 @@
-########
+
 """
 Utility Functions for SPIM2 related code 
 Code that doesn't explicitly relate to the SLM or .CORE 
 functions should go here. 
 Artemis Castelblanco
-Versión: 0.1.20240305
+Versión: 2.0 2024-09-30
 """
-#######
+
 
 import numpy as np
 import os
+import cv2
 
-######
-"""
-Matrix Related Functions
-"""
-######    
 class matriarch():
     
     def frame_image (frame, image, center_point):
@@ -43,30 +39,25 @@ class matriarch():
 
         return frame
 
-
-######
-"""
-File management related Functions
-"""
-######  
-class librarian: 
-    def save_data():
-        #TODO Make a function that saves the files in the standard format
-        pass
+    def stretch_image(image, stretch_factor, axis='x'):
+            """
+            Stretch an image array along a given axis by a stretch factor.
+            
+            Parameters:
+                image (numpy.ndarray): Input image array.
+                stretch_factor (float): Factor by which to stretch the image.
+                axis (str): Axis along which to stretch the image ('x' or 'y').
+            
+            Returns:
+                numpy.ndarray: Stretched image array.
+            """
+            if axis == 'x':
+                new_width = int(image.shape[1] * stretch_factor)
+                stretched_image = cv2.resize(image, (new_width, image.shape[0]))
+            elif axis == 'y':
+                new_height = int(image.shape[0] * stretch_factor)
+                stretched_image = cv2.resize(image, (image.shape[1], new_height))
+            else:
+                raise ValueError("Invalid axis. Please use 'x' or 'y'.")
     
-    
-    
-    
-    def save_graph(plot, filename):
-        """
-        Save a matplotlib plot as a PDF file in the parent folder of the Python file.
-        
-        Parameters:
-            plot (matplotlib.pyplot plot): The plot to save.
-            filename (str): The filename (without extension) to save the plot as.
-        """
-        parent_folder = os.path.dirname(os.path.abspath(__file__))
-        
-        
-        pass
-    
+            return stretched_image
