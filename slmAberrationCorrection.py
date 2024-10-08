@@ -340,13 +340,14 @@ class adaptiveOpt:
         
         return guideStar 
     
-    def better_get_guidestar(core, noiseSample, size=(101,101), preview=False, kernel = (5,5)):
+        def better_get_guidestar(core, noiseSample, size=(101,101), preview=False, kernel = (5,5), normalize = True):
         """A better Function to obtain more accurate GuideStar Readings, requieres a noise sample
         Args:
             core (pycromanagerCore): the pycromanager microscope's core object
             noiseSample (Array): an array containing the noise sample for the 
             size (tuple, optional): size of the wanted gudiestar image. Defaults to (101,101).
             graph (bool, optional): wheter or not to show a preview of the guidestar image. Defaults to False.
+            normalize (Bool, optional): Wether or not to normalize the guidestar. Defaults to True  
 
         Returns:
             Numpy Matrix: Matrix image of the guidestar
@@ -369,6 +370,9 @@ class adaptiveOpt:
         centerOfMass=(int(center[1]),int(center[0]))
 
         guideStar = adaptiveOpt.extract_centered_matrix(cleaned_Star, centerOfMass, size)
+        guideStar = cv2.GaussianBlur(guideStar, (3,3), 0)
+        if normalize:
+            guideStar = 255 * (guideStar - np.min(guideStar)) / (np.max(guideStar) - np.min(guideStar))
         if preview:
             plt.imshow(guideStar, cmap="mako") 
             plt.colorbar
