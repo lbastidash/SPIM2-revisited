@@ -10,7 +10,7 @@
         
     },
     "fourier_properties": {
-        "size": [1000,1000],
+        "size": [950,950],
         "center": [660,860],
         "stretch": 1.01
     },
@@ -23,9 +23,9 @@
       "metric_samples": 100,
       "noise_samples": 100,
       "zernike_modes": 21,
-      "iteration_epsilon": 0.2,
-      "iteration_alpha": 0.01,
-      "iteration_gain0": 0.1
+      "iteration_epsilon": 0.25,
+      "iteration_alpha": 0.02,
+      "iteration_gain0": 0.06
     },
     "guide_star": {
         "microbead": 0.5,

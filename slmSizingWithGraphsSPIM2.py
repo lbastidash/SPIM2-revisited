@@ -129,6 +129,7 @@ logging.info("Starting data acquisition")
 cv2.namedWindow('Real time guide star', cv2.WINDOW_NORMAL)
 meanIntensity, maxIntensity, curtainRange, metrics = evaluate_binary(SLMresolution, coverRange, steps, core, laser)
 Inertia = np.asarray(metrics)
+"""
 for i in range(repetitions):
     print("Press Any key to continue Acquisition")
     msvcrt.getch()
@@ -137,7 +138,7 @@ for i in range(repetitions):
     Inertia = Inertia + repetitionInertia
 
 Inertia= Inertia/(repetitions+1)
-
+"""
 logging.info("Data acquisition successful")
 cv2.destroyAllWindows()
 

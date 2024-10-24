@@ -30,7 +30,7 @@ degree = config["settings"]["zernike_modes"]
 epsilon = config["settings"]["iteration_epsilon"]
 g_0 = config["settings"]["iteration_gain0"]
 laser = config["illumination_device"]["name"]
-totalIterations = 30
+totalIterations = 100
 
 guideStarSize, integralRadious = slmAberrationCorrection.make_now.calculate_guidestar_params(config["guide_star"]["microbead"], config["guide_star"]["binning"])
 

@@ -109,15 +109,15 @@ class make_now:
 
 
         if Z_result.max() > maxAdmisible:
-            logging.warning(f"Maximum value {Z_result.max()} stretches over the admissible limit {maxAdmisible}")
+            logging.debug(f"Maximum value {Z_result.max()} stretches over the admissible limit {maxAdmisible}")
             if safeguard == 'resize': 
-                logging.warning(f"Rezising the Matrix")
+                logging.debug(f"Rezising the Matrix")
                 Z_result = Z_result*(maxAdmisible/Z_result.max())
             elif safeguard == 'fresnel': 
-                logging.warning(f"Fresnel lens created with modulus {maxAdmisible}")
+                logging.debug(f"Fresnel lens created with modulus {maxAdmisible}")
                 Z_result = Z_result%maxAdmisible
             else: 
-                logging.warning(f"Truncating the Matrix to {maxAdmisible}")
+                logging.debug(f"Truncating the Matrix to {maxAdmisible}")
                 Z_result = matriarch.truncate(Z_result, maxAdmisible)
         
         logging.debug(f"Maximum after resizing ={Z_result.max()}")
