@@ -44,18 +44,24 @@ logging.info("Connecting to SLM")
 slm = slmpy.SLMdisplay(monitor = config["slm_device"]["display"])
 bridge = Bridge()
 core = bridge.get_core()
-logging.info("Please check guide Star visibility before proceeding")
-#GuideStarCallibration
-phaseMask = np.zeros(slmShape)
-slm.updateArray(phaseMask.astype('uint8'))
 
-input("Press Enter to continue...")
+while True:
+    logging.info("Preparing Zero Mask")
+    #Zero Mask Callibration
+    phaseMask = np.zeros(slmShape)
+    slm.updateArray(phaseMask.astype('uint8'))
+    logging.info("Displaying phase mask")
 
-#Adaptive Optics and Double Helix
-logging.info("Preparing DH Mask correction")
-completeMask = DoubleHelixphaseMask
-#completeMask = completeMask - completeMask.min()
-#completeMask = completeMask%256
-slm.updateArray(completeMask.astype('uint8'))
+    input("Press Enter to change to the DH Mask")
 
-logging.info("Displaying phase mask")
+    #Adaptive Optics and Double Helix
+    logging.info("Preparing DH Mask correction")
+    completeMask = DoubleHelixphaseMask
+    slm.updateArray(completeMask.astype('uint8'))
+    logging.info("Displaying phase mask")
+
+    input("Press Enter to change to the Zero Mask")
+
+    endProcces=input("End process? Y/N")
+    if endProcces != "N":
+        break

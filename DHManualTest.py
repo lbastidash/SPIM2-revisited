@@ -38,12 +38,8 @@ logging.info("Connecting to SLM")
 slm = slmpy.SLMdisplay(monitor = config["slm_device"]["display"])
 bridge = Bridge()
 core = bridge.get_core()
-logging.info("Please check guide Star visibility before proceeding")
-#GuideStarCallibration
-phaseMask = np.zeros(slmShape)
-slm.updateArray(phaseMask.astype('uint8'))
 
-input("Press Enter to continue...")
+input("Press Enter to star iterative proccess")
 
 #Double Helix iteration 
 endProcces="N"
@@ -56,8 +52,6 @@ while True:
     display = np.zeros(slmShape)
     DoubleHelixphaseMask = matriarch.frame_image(display, angledMask, centerpoint) 
     completeMask = DoubleHelixphaseMask
-    #completeMask = completeMask - completeMask.min()
-    #completeMask = completeMask%256
     slm.updateArray(completeMask.astype('uint8'))
     
     #Ending the proccess
